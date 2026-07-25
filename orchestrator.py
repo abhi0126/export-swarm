@@ -1,12 +1,12 @@
 """Taku orchestrator: runs the agent swarm in sequence over a shared context."""
 
 from agents.base import Agent
-
-# Import agent subclasses here as they are built, e.g.:
-# from agents.vision import VisionAgent
+from agents.intake import IntakeAgent
 
 # Agent instances run in this order, each building on the shared context.
-AGENTS: list[Agent] = []
+AGENTS: list[Agent] = [
+    IntakeAgent(),
+]
 
 
 def run_swarm(initial_context: dict) -> tuple[dict, list[dict]]:
@@ -17,7 +17,7 @@ def run_swarm(initial_context: dict) -> tuple[dict, list[dict]]:
         try:
             result = agent.run(context)
             print(f"✅ {agent.name} — OK")
-            context = result
+            context.update(result)
             logs.append(agent.log(f"done. context keys: {sorted(context.keys())}"))
         except Exception as e:
             print(f"❌ {agent.name} — FAILED: {e}")
