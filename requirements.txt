@@ -1,0 +1,19 @@
+# Taku — direct dependencies (pinned from venv, Python 3.9)
+
+# LLM providers (OpenAI-compatible endpoints)
+openai==2.48.0
+python-dotenv==1.2.1
+
+# Sandboxed code execution (Export Intelligence agent)
+# NOTE: on Python 3.9, daytona needs eval_type_backport to parse its
+# 3.10-style type annotations. Both pins are required together.
+daytona==0.198.0
+eval_type_backport==0.4.0
+
+# Web layer
+Flask==3.1.3
+flask-cors==6.0.5
+
+# Utilities
+requests==2.32.5
+pillow==11.3.0
