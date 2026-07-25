@@ -99,6 +99,18 @@
   }
   .v { font-size: 19px; font-weight: 600; }
   .disclaimer { font-size: 14px; color: var(--muted); margin-top: 24px; }
+  .verify-badge { margin: 20px 0 0; }
+  .verify-badge summary {
+    cursor: pointer; font-size: 15px; font-weight: 600;
+    padding: 0; background: none; border: 0; border-radius: 0;
+  }
+  .verify-badge.ok summary { color: var(--ok); }
+  .verify-badge.warn summary { color: var(--bad); }
+  .verify-badge .back-translation-label {
+    font-size: 13px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); margin: 14px 0 4px;
+  }
+  .verify-badge .back-translation-text { margin: 0; color: var(--ink); }
   details { margin-top: 8px; }
   summary {
     cursor: pointer; font-weight: 600; font-size: 19px;
@@ -119,10 +131,9 @@
 
   <h2>Product</h2>
   <div class="card">
-    <label for="image_url">Product image URL</label>
-    <input type="text" id="image_url" value="{{ sample.image_url }}">
+    <input type="hidden" id="image_url" value="{{ sample.image_url }}">
 
-    <label for="image_file">&hellip;or upload a photo (overrides the URL)</label>
+    <label for="image_file">Product photo</label>
     <input type="file" id="image_file" accept="image/*">
 
     <label for="note">Craftsman's note</label>
@@ -223,6 +234,22 @@ async function startRun() {
 
     <h2>Listing</h2>
     <div class="card"><p style="margin:0">{{ m.listing_en }}</p></div>
+
+    {% if ctx.get("verification") %}
+    {% set v = ctx.verification %}
+    {% set v_ok = v.get("meaning_match", "") == "ok" and v.get("tone_check", "") == "ok" %}
+    <details class="verify-badge {{ 'ok' if v_ok else 'warn' }}">
+      <summary>
+        {% if v_ok %}
+          &#10003; Japanese verified &mdash; back-translation checked by ai&amp;
+        {% else %}
+          &#9888; Japanese flagged for review by ai&amp;{% if v.get("notes") %} &mdash; {{ v.get("notes") }}{% endif %}
+        {% endif %}
+      </summary>
+      <div class="back-translation-label">Back-translation</div>
+      <p class="back-translation-text">{{ v.get("back_translation", "") }}</p>
+    </details>
+    {% endif %}
 
     <h2>Provenance</h2>
     <div class="card"><p style="margin:0">{{ m.story }}</p></div>
