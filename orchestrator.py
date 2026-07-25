@@ -50,10 +50,13 @@ def run_swarm(initial_context: dict, on_event=None) -> tuple[dict, list[dict]]:
                     time.sleep(attempt)  # backoff: 1s, then 2s
                 else:
                     print(f"❌ {agent.name} — FAILED: {e}")
+                    last_error = e
         else:
             if on_event:
                 on_event("failed", agent.name, context)
-            break  # agent exhausted its retries — stop the swarm
+            # Agent exhausted its retries — stop the swarm and propagate so
+            # callers (e.g. the web layer) can surface the real error.
+            raise last_error
 
     return context, logs
 

@@ -2,12 +2,19 @@
 
 import json
 import threading
+import uuid
+from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
+from werkzeug.utils import secure_filename
 
 from orchestrator import run_swarm
 
 app = Flask(__name__)
+
+UPLOAD_DIR = Path(__file__).parent / "static" / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_IMAGE_EXT = {"jpg", "jpeg", "png", "webp", "gif"}
 
 SAMPLE = {
     "image_url": "https://images.unsplash.com/photo-1593618998160-e34014e67546",
@@ -73,11 +80,30 @@ def storefront():
 def api_run():
     if STATE["status"] == "running":
         return jsonify({"error": "swarm already running"}), 409
-    data = request.get_json(force=True)
+    if request.is_json:  # plain URL submissions (curl / API clients)
+        data = request.get_json(force=True)
+        image_url = data["image_url"]
+        note = data["note"]
+        buyer_country = data["buyer_country"]
+    else:  # multipart form from the demo page, may carry an uploaded photo
+        image_url = request.form.get("image_url", "").strip()
+        note = request.form.get("note", "")
+        buyer_country = request.form.get("buyer_country", "Germany")
+        photo = request.files.get("image_file")
+        if photo and photo.filename:
+            ext = secure_filename(photo.filename).rsplit(".", 1)[-1].lower()
+            if ext not in ALLOWED_IMAGE_EXT:
+                return jsonify({"error": f"unsupported image type: {ext}"}), 400
+            filename = f"{uuid.uuid4().hex}.{ext}"
+            photo.save(UPLOAD_DIR / filename)
+            # Web path so the storefront can render it; Intake base64-encodes
+            # the file bytes when calling Qwen (localhost isn't reachable).
+            image_url = f"/static/uploads/{filename}"
+
     initial_context = {
-        "image_url": data["image_url"],
-        "note": data["note"],
-        "buyer_country": data["buyer_country"],
+        "image_url": image_url,
+        "note": note,
+        "buyer_country": buyer_country,
     }
     thread = threading.Thread(target=run_in_background, args=(initial_context,), daemon=True)
     thread.start()

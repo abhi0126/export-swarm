@@ -35,6 +35,7 @@ class VerificationAgent(Agent):
         client = OpenAI(
             api_key=os.environ["AI_AND_API_KEY"],
             base_url=os.environ["AI_AND_BASE_URL"],
+            timeout=60,  # fail fast into the retry path on stalled requests
         )
 
         response = client.chat.completions.create(

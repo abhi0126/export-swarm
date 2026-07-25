@@ -39,6 +39,7 @@ class MerchandisingAgent(Agent):
         client = OpenAI(
             api_key=os.environ["GMI_API_KEY"],
             base_url=os.environ["GMI_BASE_URL"],
+            timeout=150,  # GMI legitimately takes ~80s on this call
         )
 
         response = client.chat.completions.create(

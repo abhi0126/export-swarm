@@ -75,9 +75,9 @@ class ExportIntelligenceAgent(Agent):
         code = SANDBOX_CODE.format(product_json=json.dumps(product), country=country)
 
         daytona = Daytona(DaytonaConfig(api_key=os.environ["DAYTONA_API_KEY"]))
-        sandbox = daytona.create()
+        sandbox = daytona.create(timeout=120)
         try:
-            response = sandbox.process.code_run(code)
+            response = sandbox.process.code_run(code, timeout=120)
         finally:
             sandbox.delete()
 

@@ -47,6 +47,11 @@
     border: 1px solid var(--line); border-radius: 8px;
   }
   textarea { resize: vertical; }
+  input[type=file] {
+    width: 100%; padding: 11px 14px; font-size: 15px; font-family: inherit;
+    color: var(--ink); background: #fff;
+    border: 1px solid var(--line); border-radius: 8px;
+  }
   button {
     margin-top: 26px; padding: 14px 36px;
     font-size: 18px; font-weight: 600; font-family: inherit;
@@ -117,6 +122,9 @@
     <label for="image_url">Product image URL</label>
     <input type="text" id="image_url" value="{{ sample.image_url }}">
 
+    <label for="image_file">&hellip;or upload a photo (overrides the URL)</label>
+    <input type="file" id="image_file" accept="image/*">
+
     <label for="note">Craftsman's note</label>
     <textarea id="note" rows="3">{{ sample.note }}</textarea>
 
@@ -144,6 +152,8 @@
   <h2>Shared state</h2>
   <pre class="json" id="stateJson">{}</pre>
 
+  <p id="errorMsg" style="display:none; color:var(--bad); font-weight:600"></p>
+
   <p id="storeLink" style="display:none; font-size:20px; font-weight:600">
     <a href="/storefront">View the generated storefront &rarr;</a>
   </p>
@@ -161,6 +171,13 @@ function render(state) {
     el.textContent = LABELS[s];
   });
   document.getElementById("stateJson").textContent = JSON.stringify(state.context, null, 2);
+  const errEl = document.getElementById("errorMsg");
+  if (state.status === "failed" && state.error) {
+    errEl.textContent = "Run failed: " + state.error;
+    errEl.style.display = "block";
+  } else {
+    errEl.style.display = "none";
+  }
   if (state.status === "done") {
     document.getElementById("storeLink").style.display = "block";
   }
@@ -179,15 +196,13 @@ async function pollOnce() {
 async function startRun() {
   document.getElementById("runBtn").disabled = true;
   document.getElementById("storeLink").style.display = "none";
-  await fetch("/api/run", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      image_url: document.getElementById("image_url").value,
-      note: document.getElementById("note").value,
-      buyer_country: document.getElementById("buyer_country").value
-    })
-  });
+  const fd = new FormData();
+  fd.append("image_url", document.getElementById("image_url").value);
+  fd.append("note", document.getElementById("note").value);
+  fd.append("buyer_country", document.getElementById("buyer_country").value);
+  const file = document.getElementById("image_file").files[0];
+  if (file) fd.append("image_file", file);
+  await fetch("/api/run", {method: "POST", body: fd});
   pollOnce();
   timer = setInterval(pollOnce, 1000);
 }
@@ -196,9 +211,9 @@ async function startRun() {
 {% else %}
   <div class="nav"><a href="/">&larr; Demo runner</a></div>
 
-  {% if not ctx.get("merchandising") %}
+  {% if not (ctx.get("merchandising") and ctx.get("export_intelligence")) %}
     <h1>Storefront</h1>
-    <p class="sub">Nothing here yet &mdash; <a href="/">run the swarm</a> first.</p>
+    <p class="sub">This run didn't complete &mdash; <a href="/">see the progress board</a>.</p>
   {% else %}
     {% set m = ctx.merchandising %}
     {% set e = ctx.export_intelligence %}
@@ -212,15 +227,17 @@ async function startRun() {
     <h2>Provenance</h2>
     <div class="card"><p style="margin:0">{{ m.story }}</p></div>
 
+    {% if m.get("translations") %}
     <h2>Translations</h2>
     <div class="card">
       {% for lang, label in [("ja", "Japanese"), ("fr", "French"), ("de", "German")] %}
       <div class="lang-block">
         <div class="lang-label">{{ label }}</div>
-        <p>{{ m.translations[lang] }}</p>
+        <p>{{ m.translations.get(lang, "&mdash;") }}</p>
       </div>
       {% endfor %}
     </div>
+    {% endif %}
 
     <h2>Export &mdash; {{ ctx.get("buyer_country", "Germany") }}</h2>
     <div class="card">
@@ -234,11 +251,13 @@ async function startRun() {
       <p class="disclaimer">Duty and shipping estimates are illustrative and not legal advice.</p>
     </div>
 
+    {% if ctx.get("generated_code") %}
     <h2>Under the hood</h2>
     <details>
       <summary>Code written and executed by the agent</summary>
       <pre>{{ ctx.generated_code }}</pre>
     </details>
+    {% endif %}
   {% endif %}
 {% endif %}
 

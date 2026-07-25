@@ -1,4 +1,6 @@
+import base64
 import json
+import mimetypes
 import os
 from pathlib import Path
 
@@ -10,6 +12,18 @@ from agents.base import Agent
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
+def _to_image_url(image_url: str) -> str:
+    """Remote URLs pass through unchanged. Local files (e.g. /static/uploads/...)
+    are base64-encoded into a data URL — Qwen can't fetch localhost paths over
+    the internet, so we send the image bytes inline instead."""
+    if image_url.startswith(("http://", "https://")):
+        return image_url
+    path = Path(__file__).resolve().parent.parent / image_url.lstrip("/")
+    mime = mimetypes.guess_type(path.name)[0] or "image/jpeg"
+    b64 = base64.b64encode(path.read_bytes()).decode()
+    return f"data:{mime};base64,{b64}"
+
+
 class IntakeAgent(Agent):
     name = "Intake"
 
@@ -19,6 +33,7 @@ class IntakeAgent(Agent):
         client = OpenAI(
             api_key=os.environ["QWEN_API_KEY"],
             base_url=os.environ["QWEN_BASE_URL"],
+            timeout=60,  # fail fast into the retry path on stalled requests
         )
 
         response = client.chat.completions.create(
@@ -32,12 +47,16 @@ class IntakeAgent(Agent):
                             "text": (
                                 "Analyze this craft product. Return ONLY JSON with keys: "
                                 "type, material, condition, notable_features. "
-                                "No prose, no markdown fences."
+                                "No prose, no markdown fences. "
+                                "Do NOT include brand names, logos, or maker marks "
+                                "anywhere in the output — describe only physical "
+                                "characteristics: shape, materials, construction, "
+                                "finish, included items."
                             ),
                         },
                         {
                             "type": "image_url",
-                            "image_url": {"url": context["image_url"]},
+                            "image_url": {"url": _to_image_url(context["image_url"])},
                         },
                     ],
                 }
