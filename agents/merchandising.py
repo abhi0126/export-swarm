@@ -14,7 +14,7 @@ PROMPT = """You are the merchandising lead for a Japanese craftsman's export sho
 Product analysis (from vision intake):
 {product_analysis}
 
-Craftsman's note: {note}
+Craftsman's note (written in Japanese — extract the facts regardless of language): {note}
 
 Return ONLY JSON (no prose, no markdown fences) with keys:
 - "listing_en": a compelling English product listing (2-3 sentences)

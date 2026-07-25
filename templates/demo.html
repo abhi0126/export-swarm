@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taku — AI export sales team</title>
+<style>
+  :root {
+    --bg: #faf8f4;
+    --ink: #2b2b30;
+    --muted: #71717a;
+    --accent: #4f46e5;
+    --line: #e7e3da;
+    --ok: #1a7f4b;
+    --bad: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1, h2 { font-family: Georgia, "Times New Roman", serif; line-height: 1.2; }
+  h1 { font-size: 42px; margin: 0 0 8px; }
+  h2 { font-size: 27px; margin: 56px 0 16px; }
+  .sub { color: var(--muted); margin: 0; }
+  .nav { margin-bottom: 40px; font-size: 15px; color: var(--muted); }
+  .nav a, a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .card {
+    background: #fff; border: 1px solid var(--line);
+    border-radius: 12px; padding: 28px 32px;
+  }
+  label {
+    display: block; font-size: 13px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); margin: 20px 0 6px;
+  }
+  label:first-child { margin-top: 0; }
+  input[type=text], textarea, select {
+    width: 100%; padding: 11px 14px; font-size: 17px; font-family: inherit;
+    color: var(--ink); background: #fff;
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  textarea { resize: vertical; }
+  button {
+    margin-top: 26px; padding: 14px 36px;
+    font-size: 18px; font-weight: 600; font-family: inherit;
+    color: #fff; background: var(--accent);
+    border: 0; border-radius: 8px; cursor: pointer;
+  }
+  button:disabled { opacity: .45; cursor: default; }
+
+  .agent-row {
+    display: flex; align-items: baseline; gap: 14px;
+    padding: 15px 2px; font-size: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .agent-row:last-child { border-bottom: 0; }
+  .agent-name { font-weight: 600; }
+  .sponsor { color: var(--muted); font-size: 16px; }
+  .status { margin-left: auto; font-weight: 600; font-size: 17px; }
+  .status.pending { color: var(--muted); font-weight: 400; }
+  .status.running { color: var(--accent); }
+  .status.done    { color: var(--ok); }
+  .status.failed  { color: var(--bad); }
+
+  pre.json, details pre {
+    background: #232228; color: #ece9e2;
+    border-radius: 12px; padding: 22px 26px;
+    font-size: 14px; line-height: 1.55;
+    overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+  }
+
+  .hero { width: 100%; border-radius: 12px; margin-top: 32px; }
+  .lang-label {
+    font-size: 13px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); margin-top: 18px;
+  }
+  .lang-block:first-child .lang-label { margin-top: 0; }
+  .lang-block p { margin: 6px 0 0; }
+  .verdict { font-family: Georgia, serif; font-size: 20px; }
+  .grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 18px 32px; margin-top: 20px;
+  }
+  .k {
+    font-size: 13px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .v { font-size: 19px; font-weight: 600; }
+  .disclaimer { font-size: 14px; color: var(--muted); margin-top: 24px; }
+  details { margin-top: 8px; }
+  summary {
+    cursor: pointer; font-weight: 600; font-size: 19px;
+    padding: 18px 24px; background: #fff;
+    border: 1px solid var(--line); border-radius: 12px;
+  }
+  details[open] summary { border-radius: 12px 12px 0 0; border-bottom: 0; }
+  details pre { border-radius: 0 0 12px 12px; margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+{% if page == "runner" %}
+  <div class="nav">Taku &middot; <a href="/storefront">Storefront &rarr;</a></div>
+  <h1>Taku</h1>
+  <p class="sub">An agent swarm that turns a craftsman's photo into an export-ready listing.</p>
+
+  <h2>Product</h2>
+  <div class="card">
+    <label for="image_url">Product image URL</label>
+    <input type="text" id="image_url" value="{{ sample.image_url }}">
+
+    <label for="note">Craftsman's note</label>
+    <textarea id="note" rows="3">{{ sample.note }}</textarea>
+
+    <label for="buyer_country">Buyer country</label>
+    <select id="buyer_country">
+      {% for c in countries %}
+      <option value="{{ c }}" {% if c == sample.buyer_country %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+
+    <button id="runBtn" onclick="startRun()">Run Swarm</button>
+  </div>
+
+  <h2>Swarm progress</h2>
+  <div class="card">
+    {% for name, sponsor in sponsors %}
+    <div class="agent-row">
+      <span class="agent-name">{{ name }}</span>
+      <span class="sponsor">{{ sponsor }}</span>
+      <span class="status pending" data-agent="{{ name }}">pending</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h2>Shared state</h2>
+  <pre class="json" id="stateJson">{}</pre>
+
+  <p id="storeLink" style="display:none; font-size:20px; font-weight:600">
+    <a href="/storefront">View the generated storefront &rarr;</a>
+  </p>
+
+<script>
+const AGENT_NAMES = {{ agent_names | tojson }};
+const LABELS = {pending: "pending", running: "running\u2026", done: "\u2713 done", failed: "\u2715 failed"};
+let timer = null;
+
+function render(state) {
+  AGENT_NAMES.forEach(name => {
+    const el = document.querySelector('[data-agent="' + name + '"]');
+    const s = state.agents[name] || "pending";
+    el.className = "status " + s;
+    el.textContent = LABELS[s];
+  });
+  document.getElementById("stateJson").textContent = JSON.stringify(state.context, null, 2);
+  if (state.status === "done") {
+    document.getElementById("storeLink").style.display = "block";
+  }
+}
+
+async function pollOnce() {
+  const r = await fetch("/api/status");
+  const state = await r.json();
+  render(state);
+  if (state.status === "done" || state.status === "failed") {
+    clearInterval(timer); timer = null;
+    document.getElementById("runBtn").disabled = false;
+  }
+}
+
+async function startRun() {
+  document.getElementById("runBtn").disabled = true;
+  document.getElementById("storeLink").style.display = "none";
+  await fetch("/api/run", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      image_url: document.getElementById("image_url").value,
+      note: document.getElementById("note").value,
+      buyer_country: document.getElementById("buyer_country").value
+    })
+  });
+  pollOnce();
+  timer = setInterval(pollOnce, 1000);
+}
+</script>
+
+{% else %}
+  <div class="nav"><a href="/">&larr; Demo runner</a></div>
+
+  {% if not ctx.get("merchandising") %}
+    <h1>Storefront</h1>
+    <p class="sub">Nothing here yet &mdash; <a href="/">run the swarm</a> first.</p>
+  {% else %}
+    {% set m = ctx.merchandising %}
+    {% set e = ctx.export_intelligence %}
+    <h1>{{ ctx.product_analysis.get("type", "Product") | title }}</h1>
+    <p class="sub">{{ ctx.note }}</p>
+    <img class="hero" src="{{ ctx.image_url }}" alt="Product photo">
+
+    <h2>Listing</h2>
+    <div class="card"><p style="margin:0">{{ m.listing_en }}</p></div>
+
+    <h2>Provenance</h2>
+    <div class="card"><p style="margin:0">{{ m.story }}</p></div>
+
+    <h2>Translations</h2>
+    <div class="card">
+      {% for lang, label in [("ja", "Japanese"), ("fr", "French"), ("de", "German")] %}
+      <div class="lang-block">
+        <div class="lang-label">{{ label }}</div>
+        <p>{{ m.translations[lang] }}</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h2>Export &mdash; {{ ctx.get("buyer_country", "Germany") }}</h2>
+    <div class="card">
+      <p class="verdict">{{ e.verdict }}</p>
+      <div class="grid">
+        <div><div class="k">HS code</div><div class="v">{{ e.hs_code }}</div></div>
+        <div><div class="k">Carry vs ship</div><div class="v">{{ e.carry_vs_ship }}</div></div>
+        <div><div class="k">Duty estimate</div><div class="v">{{ e.duty_estimate }}</div></div>
+        <div><div class="k">Courier</div><div class="v">{{ e.recommended_courier }}</div></div>
+      </div>
+      <p class="disclaimer">Duty and shipping estimates are illustrative and not legal advice.</p>
+    </div>
+
+    <h2>Under the hood</h2>
+    <details>
+      <summary>Code written and executed by the agent</summary>
+      <pre>{{ ctx.generated_code }}</pre>
+    </details>
+  {% endif %}
+{% endif %}
+
+</div>
+</body>
+</html>

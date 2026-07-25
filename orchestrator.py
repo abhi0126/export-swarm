@@ -26,17 +26,23 @@ AGENTS: list[Agent] = [
 MAX_ATTEMPTS = 3
 
 
-def run_swarm(initial_context: dict) -> tuple[dict, list[dict]]:
+def run_swarm(initial_context: dict, on_event=None) -> tuple[dict, list[dict]]:
+    """Run agents in sequence. on_event(status, agent_name, context) is called
+    with status "running" / "done" / "failed" around each agent (web layer hook)."""
     context = dict(initial_context)
     logs = []
 
     for agent in AGENTS:
+        if on_event:
+            on_event("running", agent.name, context)
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
                 result = agent.run(context)
                 print(f"✅ {agent.name} — OK")
                 context.update(result)
                 logs.append(agent.log(f"done. context keys: {sorted(context.keys())}"))
+                if on_event:
+                    on_event("done", agent.name, context)
                 break
             except Exception as e:
                 if attempt < MAX_ATTEMPTS:
@@ -45,6 +51,8 @@ def run_swarm(initial_context: dict) -> tuple[dict, list[dict]]:
                 else:
                     print(f"❌ {agent.name} — FAILED: {e}")
         else:
+            if on_event:
+                on_event("failed", agent.name, context)
             break  # agent exhausted its retries — stop the swarm
 
     return context, logs
@@ -80,9 +88,9 @@ if __name__ == "__main__":
     initial_context = {
         "image_url": "https://images.unsplash.com/photo-1593618998160-e34014e67546",
         "note": (
-            "Hand-forged Santoku, ~30000 yen. Made in Seki, Gifu Prefecture. "
-            "VG-10 stainless core with damascus cladding. "
-            "Workshop founded 1954, third-generation smith."
+            "手打ちの三徳包丁、約30,000円。岐阜県関市で製作。"
+            "VG-10ステンレスの芯にダマスカス積層。"
+            "工房は1954年創業、三代目の刀鍛冶。"
         ),
     }
 
