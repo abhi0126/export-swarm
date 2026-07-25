@@ -11,11 +11,13 @@ from openai import OpenAI
 from agents.base import Agent
 from agents.intake import IntakeAgent
 from agents.merchandising import MerchandisingAgent
+from agents.verification import VerificationAgent
 
 # Agent instances run in this order, each building on the shared context.
 AGENTS: list[Agent] = [
     IntakeAgent(),
     MerchandisingAgent(),
+    VerificationAgent(),
 ]
 
 
