@@ -27,7 +27,9 @@ RULES = {{
 }}
 
 category = product.get("type", "").lower()
-if "knife" in category or "knives" in category:
+material = product.get("material", "").lower()
+cutlery_terms = ("knife", "knives", "cutlery", "blade", "santoku", "cleaver", "chef")
+if any(term in category for term in cutlery_terms) or "steel" in material:
     hs_code = "8211"
     item_kind = "kitchen knives"
 else:
